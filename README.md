@@ -1,73 +1,71 @@
 # orione-content-link
 
-Resolve brand **`/c/{code}`** short links via Orione **`GET /api/public/content-link`**, with **local recompute** on `503` and **fallback article** when the resolved URL is on another host.
+Next.js middleware helpers for Orione **`/c/{code}`** content short links (SPEC 0328).
 
-## Install on a brand
-
-From monorepo (before publish):
+## Install
 
 ```bash
-cd packages/orione-content-link && npm run build
-cd ../../your-brand
-npm install file:../redirections-lp-setup/packages/orione-content-link
+npm install orione-content-link
 ```
 
-Or after publish: `npm install orione-content-link`
+Peer: `next` >= 14.
 
-## Env (brand)
+## Env (brand Vercel)
 
-| Variable | Purpose |
-|----------|---------|
-| `CAMPAIGNS_MNG_URL` | Orione API base |
-| `ORIONE_CONTENT_LINK_TOKEN` | Token with `content-links:read` |
+| Variable | Required |
+|----------|----------|
+| `ORIONE_CONTENT_LINK_TOKEN` | Samples API key (`content-links:read`) |
+| `CAMPAIGNS_MNG_URL` | `https://orione.io` or `https://dev.orione.io` |
+| `ORIONE_CONTENT_LINK_FALLBACK_URL` | optional |
+| `ORIONE_CONTENT_LINK_ARTICLE_PATHS` | optional |
+| `ORIONE_CONTENT_LINK_NOT_FOUND_PATH` | optional, default `/not-found` |
 
-## Next.js route
+## Brand without other middleware
 
-See `examples/next-app-router-route.ts` — copy to `app/c/[code]/route.ts`.
-
-## API
+`middleware.ts` in project root:
 
 ```ts
-import { resolveContentLink, computeContentCode } from "orione-content-link"
-
-const outcome = await resolveContentLink({
-  code: "rJwuYllo",
-  host: "brand.com",
-  token: process.env.ORIONE_CONTENT_LINK_TOKEN!,
-  articlePaths: ["/blog/my-article", "/blog/other"],
-  fallbackArticlePath: "/blog/my-article",
-})
-
-// outcome.status: "article" | "fallback" | "not_found"
-// outcome.url when article or fallback → redirect or rewrite
+export { middleware, config } from "orione-content-link"
 ```
 
-## Behaviour
+Update package → logic updates; this file stays one line.
 
-| Situation | Result |
-|-----------|--------|
-| API `found: true`, same host | `status: "article"`, `long_url` |
-| API `found: true`, other host | `status: "fallback"`, first/fallback article on **this** brand |
-| API `found: false` | `status: "not_found"` → your 404 |
-| API `503` | local recompute from `articlePaths` (same algorithm as CRM) |
-| API `401` | throws `ContentLinkAuthError` |
+## Brand with Supabase (manual)
 
-## Code algorithm (pinned v1)
-
-Path only (host **not** included):
-
-1. Normalize: leading `/`, strip trailing `/`
-2. `SHA-256` → `base64url` → first **8** chars (case-sensitive)
-
-Test vector: `/blog/my-article` → `rJwuYllo`
+Keep your matcher; call content-link first:
 
 ```ts
-computeContentCode("/blog/my-article") // "rJwuYllo"
+import { updateSession } from "@/lib/supabase/auth/middleware"
+import { handleContentLink } from "orione-content-link"
+import type { NextRequest } from "next/server"
+
+export async function middleware(request: NextRequest) {
+  const content = await handleContentLink(request)
+  if (content) return content
+  return updateSession(request)
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|studio|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+}
 ```
 
-## Build
+Or:
+
+```ts
+import { updateSession } from "@/lib/supabase/auth/middleware"
+import { createMiddleware } from "orione-content-link"
+
+export const middleware = createMiddleware({ fallback: updateSession })
+// keep your existing config.matcher
+```
+
+## Publish (maintainers)
 
 ```bash
+cd packages/orione-content-link
 npm run build
-npm test
+npm publish --access public   # or your private registry
 ```
