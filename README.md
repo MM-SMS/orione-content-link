@@ -1,22 +1,37 @@
 # orione-content-link
 
-Next.js middleware helpers for Orione **`/c/{code}`** content short links (SPEC 0328).
+Next.js middleware for Orione **`/c/{code}`** content short links (SPEC 0328).
 
 ## Install
-
-From the public GitHub repo (no npm publish):
 
 ```bash
 npm install github:MM-SMS/orione-content-link#main
 ```
 
-Pin a commit or tag when you want a fixed version:
+On install the package **writes `middleware.ts`** into the brand project root
+(re-export of this package). If `middleware.ts` already exists, it is **not**
+overwritten (so Supabase brands stay safe).
+
+Pin a commit/tag when you want a fixed version:
 
 ```bash
-npm install github:MM-SMS/orione-content-link#v1.0.0
+npm install github:MM-SMS/orione-content-link#v1.1.0
 ```
 
 Peer: `next` >= 14.
+
+### Force / skip writing middleware.ts
+
+```bash
+ORIONE_CONTENT_LINK_FORCE_MIDDLEWARE=1 npm install github:MM-SMS/orione-content-link#main
+ORIONE_CONTENT_LINK_SKIP_MIDDLEWARE=1 npm install ...   # never write the file
+```
+
+Vercel / CI often use `npm ci --ignore-scripts` — then copy once locally or drop:
+
+```ts
+export { middleware, config } from "orione-content-link"
+```
 
 ## Env (brand Vercel)
 
@@ -28,19 +43,9 @@ Peer: `next` >= 14.
 | `ORIONE_CONTENT_LINK_ARTICLE_PATHS` | optional |
 | `ORIONE_CONTENT_LINK_NOT_FOUND_PATH` | optional, default `/not-found` |
 
-## Brand without other middleware
-
-`middleware.ts` in project root:
-
-```ts
-export { middleware, config } from "orione-content-link"
-```
-
-Update package → logic updates; this file stays one line.
-
 ## Brand with Supabase (manual)
 
-Keep your matcher; call content-link first:
+Install with skip, or leave existing middleware and wire yourself:
 
 ```ts
 import { updateSession } from "@/lib/supabase/auth/middleware"
@@ -52,29 +57,11 @@ export async function middleware(request: NextRequest) {
   if (content) return content
   return updateSession(request)
 }
-
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|studio|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-}
-```
-
-Or:
-
-```ts
-import { updateSession } from "@/lib/supabase/auth/middleware"
-import { createMiddleware } from "orione-content-link"
-
-export const middleware = createMiddleware({ fallback: updateSession })
-// keep your existing config.matcher
 ```
 
 ## Publish (maintainers)
 
-Push to `MM-SMS/orione-content-link` (include built `dist/`). Brands install via GitHub, not npm registry.
-
 ```bash
 npm run build
-# commit + push to git@github.com:MM-SMS/orione-content-link.git
+# commit dist + templates + scripts, push to MM-SMS/orione-content-link
 ```
