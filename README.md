@@ -4,8 +4,16 @@ Next.js middleware helpers for Orione **`/c/{code}`** content short links (SPEC 
 
 ## Install
 
+From the public GitHub repo (no npm publish):
+
 ```bash
-npm install orione-content-link
+npm install github:MM-SMS/orione-content-link#main
+```
+
+Pin a commit or tag when you want a fixed version:
+
+```bash
+npm install github:MM-SMS/orione-content-link#v1.0.0
 ```
 
 Peer: `next` >= 14.
@@ -64,8 +72,9 @@ export const middleware = createMiddleware({ fallback: updateSession })
 
 ## Publish (maintainers)
 
+Push to `MM-SMS/orione-content-link` (include built `dist/`). Brands install via GitHub, not npm registry.
+
 ```bash
-cd packages/orione-content-link
 npm run build
-npm publish --access public   # or your private registry
+# commit + push to git@github.com:MM-SMS/orione-content-link.git
 ```
